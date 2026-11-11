@@ -24,7 +24,7 @@ def test_pages_are_self_contained():
 
 def test_style_hash_matches_inline_style():
     page = pages.render(REDIRECT, "tx")
-    css = re.search(r"<style>(.*?)</style>", page, re.S).group(1)
+    css = re.search(r"<style>(.*?)</style>", page, re.DOTALL).group(1)
     digest = base64.b64encode(hashlib.sha256(css.encode()).digest()).decode()
     assert pages.STYLE_SOURCE == f"'sha256-{digest}'"
 
