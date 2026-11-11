@@ -24,8 +24,13 @@ SOFTWARE.
 
 Third-party notice
 
-The OAuth code in herdogroco/oauth.py and herdogroco/tokens.py is derived from
-grok_connector, which is licensed under the MIT License:
+Parts of herdogroco are derived from grok_connector (GrokConnectorForHomeAssistant,
+https://github.com/Jenik5/GrokConnectorForHomeAssistant), which is licensed under
+the MIT License. Derived files: herdogroco/oauth.py and herdogroco/tokens.py
+(OAuth authority: registration, PKCE, pairing, grants, token rotation), and the
+HTTP layer in herdogroco/httpkit.py, herdogroco/oauth_views.py and
+herdogroco/web.py (endpoint flow, Origin check, rate limit, bearer check, MCP
+session handling). The licence text of that project follows:
 
 MIT License
 

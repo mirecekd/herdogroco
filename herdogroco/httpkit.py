@@ -1,5 +1,9 @@
 # herdogroco/httpkit.py
-"""Shared HTTP helpers: runtime state, rate limit, origin check, body readers."""
+"""Shared HTTP helpers: runtime state, rate limit, origin check, body readers.
+
+The rate limit, Origin check and strict body readers follow grok_connector (http.py),
+MIT, (c) 2026 Jenik5. See LICENSE.
+"""
 
 import asyncio
 import json

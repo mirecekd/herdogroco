@@ -1,5 +1,9 @@
 # herdogroco/web.py
-"""aiohttp app: request-id + access-log middleware, MCP endpoint and routing."""
+"""aiohttp app: request-id + access-log middleware, MCP endpoint and routing.
+
+The bearer check and the MCP session handling follow grok_connector (http.py),
+MIT, (c) 2026 Jenik5. See LICENSE.
+"""
 
 import asyncio
 import json

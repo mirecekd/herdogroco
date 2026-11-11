@@ -181,8 +181,10 @@ MIT - (c) 2026 Miroslav Dvorak. See [LICENSE](LICENSE).
 ## Acknowledgements
 
 - [GrokConnectorForHomeAssistant](https://github.com/Jenik5/GrokConnectorForHomeAssistant) by Jenik5 (MIT) -
-  the OAuth code in `herdogroco/oauth.py` and `herdogroco/tokens.py` is derived
-  from it.
+  the OAuth code in `herdogroco/oauth.py` and `herdogroco/tokens.py`, and the
+  HTTP layer in `httpkit.py`, `oauth_views.py` and `web.py` (endpoint flow,
+  Origin check, rate limit, bearer check, MCP sessions) are derived from it.
+  Its licence text is reproduced in [LICENSE](LICENSE).
 - [teskitty](https://github.com/mirecekd/teskitty) - the sibling project whose
   Hermes link settings and packaging this one follows.
 

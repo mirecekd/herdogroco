@@ -1,5 +1,8 @@
 # herdogroco/tokens.py
-"""Token endpoint logic and bearer authentication for OAuthAuthority."""
+"""Token endpoint logic and bearer authentication for OAuthAuthority.
+
+Derived from grok_connector (security.py), MIT, (c) 2026 Jenik5. See LICENSE.
+"""
 
 import base64
 import hashlib

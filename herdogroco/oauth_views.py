@@ -1,5 +1,9 @@
 # herdogroco/oauth_views.py
-"""OAuth + discovery HTTP handlers. Every outcome is logged with the reason, never with secrets."""
+"""OAuth + discovery HTTP handlers. Every outcome is logged with the reason, never with secrets.
+
+The endpoint flow (register, authorize, token) follows grok_connector (http.py),
+MIT, (c) 2026 Jenik5. See LICENSE.
+"""
 
 import logging
 import re

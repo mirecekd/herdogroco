@@ -16,6 +16,8 @@ Maintainer: Miroslav Dvorak
 ### Changed
 
 - `web.py` split into `httpkit.py`, `oauth_views.py` and `web.py`.
+- Licence notice completed: `LICENSE`, README and the source headers now list every
+  file derived from grok_connector (Jenik5, MIT), not only the two OAuth modules.
 
 ### Security
 
