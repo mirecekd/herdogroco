@@ -136,7 +136,7 @@ herdogroco.dev.mirecek.org {
 ## Development
 
 ```
-python3.12 -m venv .venv
+python3.15 -m venv .venv
 . .venv/bin/activate
 pip install -e .[dev]
 ruff check .
