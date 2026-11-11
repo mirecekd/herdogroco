@@ -1,4 +1,8 @@
-# herdogroco
+<div align="center">
+  <img src="assets/herdogroco.jpg" alt="herdogroco banner" width="600"/>
+  <h1>herdogroco</h1>
+  <p><strong>HER</strong>mes agent <strong>DO</strong>cker <strong>GRO</strong>k.com <strong>CO</strong>nnector</p>
+</div>
 
 Talk to your own Hermes Agent from Grok - on grok.com or in a Tesla - through a
 custom connector (remote MCP with OAuth).
