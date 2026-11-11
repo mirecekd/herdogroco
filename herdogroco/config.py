@@ -26,6 +26,9 @@ class Config:
     sync_timeout: float = 25.0
     prefix: str = DEFAULT_PREFIX
     log_level: str = "INFO"
+    log_format: str = "text"
+    log_content: bool = False
+    log_content_max: int = 500
 
     @classmethod
     def from_env(cls, env=os.environ):
@@ -33,6 +36,13 @@ class Config:
             if not (value := env.get(name, "").strip()):
                 raise SystemExit(f"Missing required environment variable {name}")
             return value
+
+        level = env.get("LOG_LEVEL", "INFO").strip().upper()
+        fmt = env.get("LOG_FORMAT", "text").strip().lower()
+        if level not in ("DEBUG", "INFO", "WARNING", "ERROR"):
+            raise SystemExit("LOG_LEVEL must be DEBUG, INFO, WARNING or ERROR")
+        if fmt not in ("text", "json"):
+            raise SystemExit("LOG_FORMAT must be text or json")
 
         return cls(
             hermes_url=need("HERMES_URL").rstrip("/"),
@@ -44,5 +54,8 @@ class Config:
             session=env.get("HERMES_SESSION", "herdogroco-grok"),
             sync_timeout=float(env.get("HERMES_SYNC_TIMEOUT", "25")),
             prefix=env.get("TASK_PREFIX", DEFAULT_PREFIX),
-            log_level=env.get("LOG_LEVEL", "INFO"),
+            log_level=level,
+            log_format=fmt,
+            log_content=env.get("LOG_CONTENT", "false").strip().lower() in ("1", "true", "yes", "on"),
+            log_content_max=int(env.get("LOG_CONTENT_MAX", "500")),
         )

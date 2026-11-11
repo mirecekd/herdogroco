@@ -21,13 +21,17 @@ def _from_code(auth: OAuthAuthority, params):
         code = None
     verifier = params.get("code_verifier", "")
     if not re.fullmatch(r"[A-Za-z0-9._~-]{43,128}", verifier):
-        raise OAuthError("invalid_grant")
-    if (not code or params.get("client_id") != code["client_id"]
-            or params.get("redirect_uri") != code["redirect_uri"]
-            or not secrets.compare_digest(_challenge(verifier), code["code_challenge"])):
-        raise OAuthError("invalid_grant")
+        raise OAuthError("invalid_grant", "bad_code_verifier_format")
+    if not code:
+        raise OAuthError("invalid_grant", "unknown_or_used_or_expired_code")
+    if params.get("client_id") != code["client_id"]:
+        raise OAuthError("invalid_grant", "client_id_mismatch")
+    if params.get("redirect_uri") != code["redirect_uri"]:
+        raise OAuthError("invalid_grant", "redirect_uri_mismatch")
+    if not secrets.compare_digest(_challenge(verifier), code["code_challenge"]):
+        raise OAuthError("invalid_grant", "pkce_mismatch")
     if len(auth.grants) >= 8:
-        raise OAuthError("temporarily_unavailable")
+        raise OAuthError("temporarily_unavailable", "grant_limit_reached")
     grant = {"client_id": code["client_id"], "refresh_expires": auth.clock() + 30 * 86400,
              "used_refresh": []}
     auth.grants[secrets.token_urlsafe(24)] = grant
@@ -40,17 +44,17 @@ def _from_refresh(auth: OAuthAuthority, params):
     try:
         refresh_hash = digest(params.get("refresh_token", ""))
     except UnicodeError:
-        raise OAuthError("invalid_grant") from None
+        raise OAuthError("invalid_grant", "bad_refresh_token_format") from None
     for principal, grant in list(auth.grants.items()):
         if refresh_hash in grant["used_refresh"]:  # replay: kill the whole family
             del auth.grants[principal]
-            raise OAuthError("invalid_grant")
+            raise OAuthError("invalid_grant", "refresh_token_replay_family_revoked")
         if secrets.compare_digest(refresh_hash, grant.get("refresh_hash", "")):
             break
     else:
-        raise OAuthError("invalid_grant")
+        raise OAuthError("invalid_grant", "unknown_refresh_token")
     if params.get("client_id") != grant["client_id"]:
-        raise OAuthError("invalid_grant")
+        raise OAuthError("invalid_grant", "client_id_mismatch")
     grant["used_refresh"] = [*grant["used_refresh"][-31:], refresh_hash]
     return grant
 
@@ -58,14 +62,14 @@ def _from_refresh(auth: OAuthAuthority, params):
 def issue(auth: OAuthAuthority, params):
     auth.prune()
     if params.get("resource") != auth.resource:
-        raise OAuthError("invalid_target")
+        raise OAuthError("invalid_target", "resource_mismatch")
     kind = params.get("grant_type")
     if kind == "authorization_code":
         grant = _from_code(auth, params)
     elif kind == "refresh_token":
         grant = _from_refresh(auth, params)
     else:
-        raise OAuthError("unsupported_grant_type")
+        raise OAuthError("unsupported_grant_type", "grant_type=" + str(kind)[:40])
     access, refresh = secrets.token_urlsafe(32), secrets.token_urlsafe(32)
     grant.update(access_hash=digest(access), access_expires=auth.clock() + 600,
                  refresh_hash=digest(refresh), resource=auth.resource)

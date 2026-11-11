@@ -21,9 +21,10 @@ CALLBACK_DOMAINS = ("grok.com", "x.ai")
 
 
 class OAuthError(ValueError):
-    def __init__(self, error="invalid_request"):
+    def __init__(self, error="invalid_request", reason=None):
         super().__init__(error)
         self.error = error
+        self.reason = reason or error  # log-only detail, never sent to the client
 
 
 def digest(value):
@@ -101,7 +102,9 @@ class OAuthAuthority:
                 or "authorization_code" not in grants
                 or set(grants) - {"authorization_code", "refresh_token"}
                 or data.get("response_types", ["code"]) != ["code"]):
-            raise OAuthError("invalid_client_metadata")
+            bad = [u for u in redirects if not allowed_callback(u)] if isinstance(redirects, list) else []
+            raise OAuthError("invalid_client_metadata", "bad_redirect_uris:" + ",".join(b[:80] for b in bad[:3])
+                             if bad else "bad_client_metadata")
         if len(self.clients) >= 64:
             raise OAuthError("temporarily_unavailable")
         cid = secrets.token_urlsafe(24)
@@ -113,13 +116,17 @@ class OAuthAuthority:
         self.prune()
         client = self.clients.get(params.get("client_id"))
         if not client or params.get("redirect_uri") not in client["redirects"]:
-            raise OAuthError("invalid_client")
-        if (params.get("response_type") != "code" or params.get("code_challenge_method") != "S256"
-                or not re.fullmatch(r"[A-Za-z0-9_-]{43}", params.get("code_challenge", ""))
-                or not isinstance(params.get("state"), str) or not 1 <= len(params["state"]) <= 1024
-                or params.get("resource") != self.resource
-                or params.get("scope", SCOPE) != SCOPE):
-            raise OAuthError()
+            raise OAuthError("invalid_client", "unknown_client" if not client else "redirect_uri_mismatch")
+        checks = {
+            "response_type": params.get("response_type") == "code",
+            "code_challenge_method": params.get("code_challenge_method") == "S256",
+            "code_challenge": bool(re.fullmatch(r"[A-Za-z0-9_-]{43}", params.get("code_challenge", ""))),
+            "state": isinstance(params.get("state"), str) and 1 <= len(params["state"]) <= 1024,
+            "resource": params.get("resource") == self.resource,
+            "scope": params.get("scope", SCOPE) == SCOPE,
+        }
+        if bad := [k for k, ok in checks.items() if not ok]:
+            raise OAuthError(reason="bad_" + ",".join(bad))
         if len(self.pending) >= 64:
             raise OAuthError("temporarily_unavailable")
         tx = secrets.token_urlsafe(32)
@@ -131,7 +138,7 @@ class OAuthAuthority:
         self.prune()
         pending = self.pending.get(tx)
         if not pending or len(self.failures) >= 10:
-            raise OAuthError("access_denied")
+            raise OAuthError("access_denied", "unknown_transaction" if not pending else "too_many_failures")
         expected = self.pairing.pending() if self.pairing else None
         try:
             ok = bool(expected) and secrets.compare_digest(digest(pairing_secret), expected)
@@ -139,7 +146,7 @@ class OAuthAuthority:
             ok = False
         if not ok:
             self.failures.append(self.clock())
-            raise OAuthError("access_denied")
+            raise OAuthError("access_denied", "wrong_pairing_code" if expected else "no_pairing_code_active")
         self.pairing.clear()
         del self.pending[tx]
         code = secrets.token_urlsafe(32)

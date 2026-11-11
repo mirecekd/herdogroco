@@ -111,7 +111,31 @@ All settings are environment variables, normally set in `.env`.
 | `HERMES_SESSION` | `herdogroco-grok` | Hermes session name for Grok requests. |
 | `HERMES_SYNC_TIMEOUT` | `25` | Seconds to wait for an answer before the task continues in the background. |
 | `TASK_PREFIX` | built-in | Optional text prepended to every task. The default asks for short spoken answers without markdown. |
-| `LOG_LEVEL` | `INFO` | Python log level. |
+| `LOG_LEVEL` | `INFO` | `DEBUG`, `INFO`, `WARNING` or `ERROR`. See [Logging](#logging). |
+| `LOG_FORMAT` | `text` | `text` (key=value) or `json` (one object per line). |
+| `LOG_CONTENT` | `false` | Also log task text and Hermes answers. Personal data, so off by default. |
+| `LOG_CONTENT_MAX` | `500` | Longest content snippet in the log, in characters. |
+
+## Logging
+
+Every line carries a request id (also returned to the client as `X-Request-Id`),
+so one Grok action can be followed from the HTTP request through OAuth or MCP to
+the Hermes run: `docker logs herdogroco | grep a1b2c3d4`.
+
+| Level | What you get |
+| --- | --- |
+| `WARNING` | Rejections with the reason (wrong pairing code, PKCE mismatch, unknown token, foreign Origin, rate limit), Hermes problems. |
+| `INFO` | Adds one access line per request (method, path, status, ms, client IP, user agent), OAuth steps (register, authorize, token), every MCP call and result, Hermes run status changes. `/health` is not logged. |
+| `DEBUG` | Adds safe request headers, discovery hits, Hermes call timing, the MCP response and the OAuth state saves. |
+
+What is never logged, at any level: access and refresh tokens, authorization
+codes, PKCE verifiers, cookies, the pairing code and `HERMES_KEY`. Clients,
+sessions and principals appear only as 8-character fingerprints. Task text and
+answers appear only with `LOG_CONTENT=true`; otherwise the log shows the length.
+
+Typical question: *why did the connector not pair?* Look for `register.rejected`,
+`authorize.rejected`, `authorize.denied` and `token.rejected` - each has a
+`reason` field.
 
 ## Caddy reverse proxy
 

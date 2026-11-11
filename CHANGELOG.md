@@ -4,6 +4,24 @@ All notable changes to this project are documented here.
 
 Maintainer: Miroslav Dvorak
 
+## Unreleased
+
+### New
+
+- Extensive, configurable logging: `LOG_LEVEL`, `LOG_FORMAT` (text or json) and
+  `LOG_CONTENT`. One access line per request, a request id on every line and
+  in the `X-Request-Id` header, OAuth, MCP and Hermes run events, and a
+  rejection `reason` for every failed OAuth step.
+
+### Changed
+
+- `web.py` split into `httpkit.py`, `oauth_views.py` and `web.py`.
+
+### Security
+
+- Tokens, codes, cookies, the pairing code and the Hermes key are never
+  logged; clients and sessions are logged as fingerprints only.
+
 ## 0.1.0
 
 ### New

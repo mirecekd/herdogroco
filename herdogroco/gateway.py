@@ -2,12 +2,15 @@
 """MCP JSON-RPC gateway (Streamable HTTP, JSON responses). No HTTP knowledge here."""
 
 import json
+import logging
 import re
 import secrets
 import time
 
-from . import VERSION
+from . import VERSION, logsetup
 from .hermes import Hermes, HermesError
+
+log = logging.getLogger("herdogroco.gateway")
 
 PROTOCOLS = ("2024-11-05", "2025-03-26", "2025-06-18", "2025-11-25")
 INSTRUCTIONS = (
@@ -83,6 +86,7 @@ class Gateway:
                 return content(await self.hermes.status(args["task_id"]))
             return content(await self.hermes.cancel(args["task_id"]))
         except HermesError as err:
+            logsetup.event(log, "tool.failed", logging.ERROR, tool=name, error=str(err))
             return content({"error": str(err)}, True)
 
     async def rpc(self, message, principal, session=None):
@@ -119,9 +123,13 @@ class Gateway:
         name, args = params.get("name"), params.get("arguments", {})
         tool = next((t for t in TOOLS if t["name"] == name), None)
         if tool is None or not isinstance(args, dict):
+            logsetup.event(log, "tool.rejected", logging.WARNING, reason="unknown_tool_or_bad_args",
+                           tool=str(name)[:60], args_type=type(args).__name__)
             return _rpc_error(rid, -32602, "Unknown tool or invalid arguments")
         schema = tool["inputSchema"]["properties"]
         if set(args) != set(schema) or not all(isinstance(v, str) and v for v in args.values()):
+            logsetup.event(log, "tool.rejected", logging.WARNING, reason="schema_mismatch", tool=name,
+                           expected=sorted(schema), got=sorted(args))
             return _rpc_error(rid, -32602, "Invalid tool arguments")
         if "request" in args and len(args["request"]) > 2000:
             return _rpc_error(rid, -32602, "Request too long")
@@ -133,7 +141,9 @@ class Gateway:
         self.replies = {k: v for k, v in self.replies.items() if v[0] > now}
         if session is not None and key in self.replies:
             if self.replies[key][1] != name:
+                logsetup.event(log, "tool.id_collision", logging.WARNING, tool=name, rpc_id=rid)
                 return _rpc_error(rid, -32602, "Request ID already used for another tool")
+            logsetup.event(log, "tool.replayed", tool=name, rpc_id=rid)
             return self.replies[key][2]
         idem = f"{principal}:{session}:{rid}" if session is not None and name == "ask_hermes" else None
         result = await self._call_tool(name, args, idem)
