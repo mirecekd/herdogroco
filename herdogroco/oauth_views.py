@@ -16,6 +16,11 @@ FORM_CSP = ("default-src 'none'; style-src {style}; form-action 'self' {origin};
             "base-uri 'none'; frame-ancestors 'none'")
 
 
+def error_page(status, title, message):
+    return web.Response(text=pages.render_error(title, message), status=status, content_type="text/html",
+                        headers={**NO_CACHE, "Content-Security-Policy": pages.STATIC_CSP})
+
+
 def tx_cookie(tx):
     return "herdogroco_tx_" + re.sub(r"[^A-Za-z0-9]", "", tx)[:16]
 
@@ -77,7 +82,7 @@ async def authorize_get(request):
     except (OAuthError, ValueError) as err:
         logsetup.event(log, "authorize.rejected", logging.WARNING,
                        reason=getattr(err, "reason", str(err)), params=sorted(request.query))
-        return web.Response(text="Invalid authorization request", status=400, headers=NO_CACHE)
+        return error_page(400, "Invalid request", "This authorization request is not valid or has expired.")
     logsetup.event(log, "authorize.form_shown", client=logsetup.short(params["client_id"]),
                    redirect_host=urlsplit(params["redirect_uri"]).hostname, pending=len(a.pending))
     resp = web.Response(text=pages.render(params["redirect_uri"], tx), content_type="text/html", headers=headers)
@@ -94,13 +99,13 @@ async def authorize_post(request):
         logsetup.event(log, "authorize.denied", logging.WARNING,
                        reason="transaction_missing" if not tx else "cookie_missing_or_mismatch",
                        cookie_header=bool(request.headers.get("Cookie")))
-        raise web.HTTPForbidden(text="Invalid transaction")
+        return error_page(403, "Session expired", "This sign-in step has expired or was opened in another browser.")
     try:
         redirect, code, state = rt(request).authority.approve(tx, data.get("pairing_secret", ""))
     except OAuthError as err:
         logsetup.event(log, "authorize.denied", logging.WARNING, reason=err.reason,
                        failures=len(rt(request).authority.failures))
-        return web.Response(text="Invalid or expired pairing code", status=403, headers=NO_CACHE)
+        return error_page(403, "Pairing code rejected", "The code is wrong, already used or expired.")
     logsetup.event(log, "authorize.approved", redirect_host=urlsplit(redirect).hostname)
     p = urlsplit(redirect)
     query = urlencode([*parse_qsl(p.query), ("code", code), ("state", state)])
